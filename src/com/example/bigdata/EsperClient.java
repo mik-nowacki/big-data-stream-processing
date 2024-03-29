@@ -53,11 +53,15 @@ public class EsperClient {
         });
 
         Faker faker = new Faker();
+        String[] eventRecords = createInputData();
+        int element = 0;
 
         long startTime = System.currentTimeMillis();
         while (System.currentTimeMillis() < startTime + (1000L * howLongInSec)) {
             for (int i = 0; i < noOfRecordsPerSec; i++) {
-                generateMountainEventData(runtime, faker);
+//                generateMountainEventData(runtime, faker);
+                runtime.getEventService().sendEventJson(eventRecords[element], "MountainEvent");
+                element++;
             }
             waitToEpoch();
         }
@@ -71,13 +75,21 @@ public class EsperClient {
         EPCompiled epCompiled;
 
         try {
+//            epCompiled = compiler.compile("""
+//            @public @buseventtype create json schema MountainEvent(peak_name string, trip_leader string, result string,
+//            amount_people int, ets string, its string);
+//
+//            @name('answer')
+//            SELECT peak_name, trip_leader, result, amount_people, ets, its
+//            FROM MountainEvent#ext_timed(java.sql.Timestamp.valueOf(its).getTime(), 3 sec)
+//            """, compilerArgs);
             epCompiled = compiler.compile("""
             @public @buseventtype create json schema MountainEvent(peak_name string, trip_leader string, result string,
             amount_people int, ets string, its string);
             
             @name('answer')
-            SELECT peak_name, trip_leader, result, amount_people, ets, its
-            FROM MountainEvent#ext_timed(java.sql.Timestamp.valueOf(its).getTime(), 3 sec)
+            SELECT *
+            FROM MountainEvent
             """, compilerArgs);
         }
 
@@ -120,6 +132,7 @@ public class EsperClient {
                 .build()
                 .generate();
         runtime.getEventService().sendEventJson(record, "MountainEvent");
+
     }
 
     static void waitToEpoch() throws InterruptedException {
@@ -128,6 +141,23 @@ public class EsperClient {
         Instant instantTrunc = instant.truncatedTo( ChronoUnit.SECONDS ) ;
         long millis2 = instantTrunc.toEpochMilli() ;
         TimeUnit.MILLISECONDS.sleep(millis2+1000-millis);
+    }
+
+    static String[] createInputData() {
+        return new String[] {
+                "{\"peak_name\":\"Langtang Lirung\",\"trip_leader\":\"Steve House\",\"result\":\"resignation-other\",\"amount_people\":12,\"ets\":\"2024-03-29 14:17:58.0\",\"its\":\"2024-03-29 14:18:21.0\"}",
+        "{\"peak_name\":\"Nangpai Gosum\",\"trip_leader\":\"Caroline Gleich\",\"result\":\"base-reached\",\"amount_people\":5,\"ets\":\"2024-03-29 14:18:16.0\",\"its\":\"2024-03-29 14:18:21.0\"}",
+        "{\"peak_name\":\"Tongshanjiabu\",\"trip_leader\":\"Catherine Destivelle\",\"result\":\"resignation-injury\",\"amount_people\":12,\"ets\":\"2024-03-29 14:18:08.0\",\"its\":\"2024-03-29 14:18:22.0\"}",
+        "{\"peak_name\":\"Pumari Chhish\",\"trip_leader\":\"Conrad Anker\",\"result\":\"base-reached\",\"amount_people\":2,\"ets\":\"2024-03-29 14:17:53.0\",\"its\":\"2024-03-29 14:18:22.0\"}",
+        "{\"peak_name\":\"Chongtar\",\"trip_leader\":\"Catherine Destivelle\",\"result\":\"summit-reached\",\"amount_people\":1,\"ets\":\"2024-03-29 14:17:50.0\",\"its\":\"2024-03-29 14:18:23.0\"}",
+        "{\"peak_name\":\"Baltistan Peak\",\"trip_leader\":\"Catherine Destivelle\",\"result\":\"summit-reached\",\"amount_people\":10,\"ets\":\"2024-03-29 14:17:52.0\",\"its\":\"2024-03-29 14:18:23.0\"}",
+        "{\"peak_name\":\"Khartaphu\",\"trip_leader\":\"George Mallory\",\"result\":\"base-reached\",\"amount_people\":10,\"ets\":\"2024-03-29 14:18:07.0\",\"its\":\"2024-03-29 14:18:24.0\"}",
+        "{\"peak_name\":\"Langtang Ri\",\"trip_leader\":\"Junko Tabei\",\"result\":\"resignation-weather\",\"amount_people\":8,\"ets\":\"2024-03-29 14:17:43.0\",\"its\":\"2024-03-29 14:18:24.0\"}",
+        "{\"peak_name\":\"Cho Oyu\",\"trip_leader\":\"George Mallory\",\"result\":\"base-reached\",\"amount_people\":1,\"ets\":\"2024-03-29 14:18:11.0\",\"its\":\"2024-03-29 14:18:25.0\"}",
+        "{\"peak_name\":\"Jongsong Peak\",\"trip_leader\":\"Caroline Gleich\",\"result\":\"resignation-injury\",\"amount_people\":6,\"ets\":\"2024-03-29 14:18:08.0\",\"its\":\"2024-03-29 14:18:25.0\"}",
+        "{\"peak_name\":\"Jongsong Peak\",\"trip_leader\":\"George Mallory\",\"result\":\"base-reached\",\"amount_people\":2,\"ets\":\"2024-03-29 14:17:44.0\",\"its\":\"2024-03-29 14:18:26.0\"}",
+        "{\"peak_name\":\"Siguang Ri\",\"trip_leader\":\"Catherine Destivelle\",\"result\":\"resignation-other\",\"amount_people\":9,\"ets\":\"2024-03-29 14:18:04.0\",\"its\":\"2024-03-29 14:18:26.0\"}"
+        };
     }
 }
 

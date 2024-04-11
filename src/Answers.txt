@@ -1,0 +1,83 @@
+#task 1 <- TYLKO CI KTÓRZY OSIĄGNĘLI SUKCES
+@name('answer') SELECT result, sum(amount_people) as sum_people
+                            FROM MountainEvent#ext_timed(java.sql.Timestamp.valueOf(its).getTime(), 10 sec)
+                            GROUP BY result
+                            HAVING sum(amount_people) is not null;
+
+#task 2
+@name('answer') SELECT peak_name, trip_leader, result, amount_people
+            	FROM MountainEvent(result = 'resignation-someone-missing')
+            	WHERE amount_people < 3;
+
+#task 3
+@name('answer') SELECT peak_name, trip_leader, result, amount_people, its,
+                (SELECT max(amount_people)
+                FROM MountainEvent(result = 'resignation-someone-missing')#length(20)) as max_people
+            FROM MountainEvent(result = 'resignation-someone-missing')#length(20)
+            WHERE amount_people = (SELECT max(amount_people)
+                                   FROM MountainEvent(result = 'resignation-someone-missing')#length(20));
+
+#task 4
+@name('answer') SELECT peak_name, count(peak_name) as how_many
+                FROM MountainEvent()#ext_timed_batch(java.sql.Timestamp.valueOf(its).getTime(), 5 sec)
+                GROUP BY peak_name
+                ORDER BY count(peak_name) DESC
+                LIMIT 999 offset 10;
+
+#task 5 TODO
+@name('answer') SELECT a.result as result_1,
+                                   b.result as result_2,
+                                   c.result as result_3,
+                                   a.its as its_1,
+                                   b.its as its_2,
+                                   c.its as its_3
+                            FROM pattern[every a=MountainEvent(result in ('summit-reached', 'base-reached')) ->
+                                            ((
+                                                b=MountainEvent(result in ('summit-reached', 'base-reached')) ->
+                                                c=MountainEvent(result in ('summit-reached', 'base-reached'))
+                                            ) where timer:within(5 seconds) ->
+                                            d=MountainEvent(result not in ('summit-reached', 'base-reached')))];
+
+#task 6
+@name('answer') SELECT a.result as result_1,
+                                   b.result as result_2,
+                                   c.result as result_3,
+                                   a.trip_leader
+                            FROM pattern[(every a=MountainEvent(result in ('summit-reached', 'base-reached')) ->
+                                                (b=MountainEvent(result in ('summit-reached', 'base-reached') and trip_leader=a.trip_leader) ->
+                                                c=MountainEvent(result in ('summit-reached', 'base-reached') and trip_leader=a.trip_leader))
+                                                and not MountainEvent(trip_leader!=a.trip_leader)
+                                                and not MountainEvent(result not in ('summit-reached', 'base-reached')))
+                                                or
+                                                (every a=MountainEvent(result not in ('summit-reached', 'base-reached')) ->
+                                                (b=MountainEvent(result not in ('summit-reached', 'base-reached') and trip_leader=a.trip_leader) ->
+                                                c=MountainEvent(result not in ('summit-reached', 'base-reached') and trip_leader=a.trip_leader))
+                                                and not MountainEvent(trip_leader!=a.trip_leader)
+                                                and not MountainEvent(result in ('summit-reached', 'base-reached')))
+                                            ];
+
+#task 7
+@name('answer') SELECT *
+                FROM MountainEvent()
+                MATCH_RECOGNIZE (
+                    PARTITION by trip_leader
+                    MEASURES
+                        A.trip_leader AS trip_leader,
+                        A.its AS its_a,
+                        A.result AS result_a,
+                        A.amount_people AS amount_people_a,
+                        FIRST(B.result) AS result_b_first,
+                        FIRST(B.amount_people) AS amount_people_b_first,
+                        C.result AS result_c,
+                        C.amount_people AS amount_people_c
+                    PATTERN (A B{3,5} C)
+                    DEFINE
+                        A AS A.result not in ('summit-reached', 'base-reached'),
+                        B AS (B.result in ('summit-reached', 'base-reached')
+                            and B.amount_people < A.amount_people
+                        ),
+                        C AS (C.result not in ('summit-reached', 'base-reached')
+                            and C.amount_people >= A.amount_people
+                        )
+
+                );
